@@ -1,0 +1,134 @@
+@startuml class_diagram
+' ============================================================
+' CrowdLabel — Диаграмма классов (Class Diagram)
+' ============================================================
+
+skinparam classBackgroundColor #1e293b
+skinparam classBorderColor #4f46e5
+skinparam classArrowColor #94a3b8
+skinparam classFontColor #e2e8f0
+skinparam packageBackgroundColor #0f172a
+
+enum UserRole {
+    ADMIN
+    MANAGER
+    ANNOTATOR
+}
+
+enum TaskType {
+    IMAGE_CLASSIFICATION
+    TEXT_CLASSIFICATION
+    NER
+    SENTIMENT
+    BOUNDING_BOX
+}
+
+enum TaskStatus {
+    DRAFT
+    ACTIVE
+    COMPLETED
+    ARCHIVED
+}
+
+enum AnnotationStatus {
+    PENDING
+    VERIFIED
+    REJECTED
+}
+
+class User {
+    + id: int
+    + email: str
+    + username: str
+    + hashed_password: str
+    + full_name: str | None
+    + role: UserRole
+    + is_active: bool
+    + created_at: datetime
+    + updated_at: datetime
+    --
+    + authenticate(password: str): bool
+}
+
+class Dataset {
+    + id: int
+    + name: str
+    + description: str | None
+    + task_type: TaskType
+    + labels: list[str]
+    + creator_id: int
+    + created_at: datetime
+}
+
+class Task {
+    + id: int
+    + title: str
+    + description: str | None
+    + dataset_id: int
+    + creator_id: int
+    + status: TaskStatus
+    + data: dict
+    + annotations_required: int
+    + reward_points: int
+    + created_at: datetime
+    + updated_at: datetime
+    --
+    + is_complete(): bool
+}
+
+class Annotation {
+    + id: int
+    + task_id: int
+    + annotator_id: int
+    + label: str
+    + metadata: dict | None
+    + status: AnnotationStatus
+    + verified_by: int | None
+    + comment: str | None
+    + created_at: datetime
+}
+
+' Services
+class UserService {
+    + get_by_id(id: int): User
+    + get_by_email(email: str): User
+    + create(data: RegisterRequest): User
+    + authenticate(email, password): User | None
+    + update_role(id, role): User
+    + list_users(skip, limit): tuple
+}
+
+class TaskService {
+    + create(data, creator_id): Task
+    + get_by_id(id): Task
+    + list_tasks(skip, limit, status): tuple
+    + update(id, data): Task
+    + delete(id): bool
+    + available_for_user(user_id, skip, limit): tuple
+}
+
+class AnnotationService {
+    + submit(data, annotator_id): Annotation
+    + verify(id, data, verifier_id): Annotation
+    + get_for_task(task_id): list
+    + my_annotations(user_id): list
+}
+
+' Relationships
+User "1" -- "0..*" Task : creates >
+User "1" -- "0..*" Annotation : submits >
+User "1" -- "0..*" Dataset : creates >
+Dataset "1" -- "0..*" Task : contains >
+Task "1" -- "0..*" Annotation : has >
+Annotation "0..*" -- "1" User : verified by >
+
+User "1" -- "1" UserRole
+Task "1" -- "1" TaskStatus
+Task "1" -- "1" TaskType : through Dataset
+Annotation "1" -- "1" AnnotationStatus
+
+UserService ..> User : manages
+TaskService ..> Task : manages
+AnnotationService ..> Annotation : manages
+
+@enduml

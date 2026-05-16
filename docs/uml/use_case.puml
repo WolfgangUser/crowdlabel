@@ -1,0 +1,87 @@
+@startuml use_case_diagram
+' ============================================================
+' CrowdLabel — Диаграмма вариантов использования (Use Case)
+' ============================================================
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+    BackgroundColor #1e293b
+    BorderColor #4f46e5
+    FontColor #e2e8f0
+}
+
+actor "Аннотатор\n(Annotator)" as ANN #5eead4
+actor "Менеджер\n(Manager)" as MGR #fbbf24
+actor "Администратор\n(Admin)" as ADM #f87171
+
+rectangle "CrowdLabel Platform" {
+    ' Auth
+    package "Аутентификация" {
+        usecase "Регистрация" as UC_REG
+        usecase "Вход в систему" as UC_LOGIN
+        usecase "Обновление токена" as UC_REFRESH
+        usecase "Просмотр профиля" as UC_PROFILE
+    }
+
+    ' Annotation
+    package "Работа с задачами" {
+        usecase "Просмотр задач" as UC_LIST
+        usecase "Просмотр деталей задачи" as UC_DETAIL
+        usecase "Отправить аннотацию" as UC_SUBMIT
+        usecase "Просмотр своих аннотаций" as UC_MY_ANN
+    }
+
+    ' Manager
+    package "Управление данными" {
+        usecase "Создать задачу" as UC_CREATE_TASK
+        usecase "Редактировать задачу" as UC_EDIT_TASK
+        usecase "Верифицировать аннотацию" as UC_VERIFY
+        usecase "Создать датасет" as UC_DATASET
+        usecase "Экспорт датасета" as UC_EXPORT
+        usecase "Просмотр всех аннотаций" as UC_ALL_ANN
+    }
+
+    ' Admin
+    package "Администрирование" {
+        usecase "Список пользователей" as UC_USERS
+        usecase "Изменить роль" as UC_ROLE
+        usecase "Деактивировать пользователя" as UC_DEACT
+        usecase "Удалить задачу" as UC_DELETE
+    }
+}
+
+' Annotator
+ANN --> UC_REG
+ANN --> UC_LOGIN
+ANN --> UC_REFRESH
+ANN --> UC_PROFILE
+ANN --> UC_LIST
+ANN --> UC_DETAIL
+ANN --> UC_SUBMIT
+ANN --> UC_MY_ANN
+
+' Manager (includes annotator rights)
+MGR --> UC_REG
+MGR --> UC_LOGIN
+MGR --> UC_LIST
+MGR --> UC_DETAIL
+MGR --> UC_CREATE_TASK
+MGR --> UC_EDIT_TASK
+MGR --> UC_VERIFY
+MGR --> UC_DATASET
+MGR --> UC_EXPORT
+MGR --> UC_ALL_ANN
+
+' Admin (full access)
+ADM --> UC_USERS
+ADM --> UC_ROLE
+ADM --> UC_DEACT
+ADM --> UC_DELETE
+ADM --> UC_CREATE_TASK
+ADM --> UC_EDIT_TASK
+ADM --> UC_VERIFY
+ADM --> UC_EXPORT
+
+@enduml

@@ -1,0 +1,73 @@
+@startuml deployment_diagram
+' ============================================================
+' CrowdLabel — Диаграмма развёртывания (Deployment Diagram)
+' ============================================================
+
+skinparam backgroundColor #0f172a
+skinparam nodeBackgroundColor #1e293b
+skinparam nodeBorderColor #4f46e5
+skinparam componentBackgroundColor #0f172a
+skinparam componentBorderColor #334155
+skinparam arrowColor #6366f1
+skinparam fontColor #e2e8f0
+
+node "Клиент\n(Browser)" as CLIENT {
+    component [React SPA\nVite + TypeScript] as REACT
+}
+
+node "Docker Host / Cloud VPS" as SERVER {
+    node "Docker Compose Network" {
+        node "frontend\n(nginx:alpine)" as FE_NODE {
+            component [nginx\n:80] as NGINX
+            component [React Build\n/dist] as BUILD
+        }
+
+        node "backend\n(python:3.11-slim)" as BE_NODE {
+            component [Uvicorn\n:8000] as UVICORN
+            component [FastAPI App] as FASTAPI
+            component [SQLAlchemy\nAsyncPG] as ORM
+        }
+
+        node "postgres\n(postgres:16-alpine)" as PG_NODE {
+            database [PostgreSQL 16\n:5432] as PGDB
+        }
+
+        node "redis\n(redis:7-alpine)" as REDIS_NODE {
+            database [Redis 7\n:6379] as REDISDB
+        }
+    }
+}
+
+' External services
+cloud "GitHub\nActions" as GITHUB {
+    component [CI/CD\nPipeline] as CI
+}
+
+cloud "Docker Hub\n/ Registry" as REGISTRY {
+    component [crowdlabel-backend\ncrowdlabel-frontend] as IMAGES
+}
+
+' Connections
+CLIENT -down-> NGINX : HTTPS\n:443/:5173
+NGINX -right-> UVICORN : HTTP proxy\n/api/*
+UVICORN -down-> FASTAPI
+FASTAPI -down-> ORM
+ORM -right-> PGDB : asyncpg\nSQL
+FASTAPI -right-> REDISDB : redis-py\ncache/queue
+
+GITHUB -down-> IMAGES : docker push
+IMAGES -down-> SERVER : docker pull
+
+note right of BE_NODE
+  12-factor Factor VI: Stateless
+  12-factor Factor VII: Port 8000
+  12-factor Factor XI: JSON logs
+end note
+
+note right of PG_NODE
+  12-factor Factor IV:
+  Backing service via URL
+  postgresql+asyncpg://...
+end note
+
+@enduml

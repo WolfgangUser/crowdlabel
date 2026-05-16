@@ -1,0 +1,79 @@
+@startuml sequence_annotation
+' ============================================================
+' CrowdLabel — Диаграмма последовательности: Разметка данных
+' ============================================================
+
+skinparam backgroundColor #0f172a
+skinparam sequenceArrowColor #6366f1
+skinparam sequenceLifeLineBorderColor #334155
+skinparam participantBackgroundColor #1e293b
+skinparam participantBorderColor #4f46e5
+skinparam participantFontColor #e2e8f0
+skinparam noteBackgroundColor #1e293b
+skinparam noteBorderColor #4f46e5
+
+actor Аннотатор as ANN
+participant "React SPA" as SPA #1e3a5f
+participant "FastAPI\n/api/v1" as API #1e293b
+participant "JWT\nMiddleware" as JWT #2d1b69
+participant "PostgreSQL" as DB #1a2e1a
+participant "Redis" as REDIS #2e1a1a
+
+== Аутентификация ==
+ANN -> SPA: Ввод email + пароль
+SPA -> API: POST /auth/login
+API -> DB: SELECT user WHERE email=?
+DB --> API: user record
+API -> API: bcrypt.verify(password, hash)
+API --> SPA: {access_token, refresh_token}
+SPA -> SPA: localStorage.setItem(tokens)
+
+== Получение доступных задач ==
+ANN -> SPA: Открыть список задач
+SPA -> API: GET /tasks/available\n[Authorization: Bearer <token>]
+API -> JWT: decode_token(token)
+JWT --> API: {sub: user_id, role: "annotator"}
+API -> DB: SELECT tasks WHERE status=ACTIVE\nAND id NOT IN (annotator's tasks)
+DB --> API: [Task, ...]
+API --> SPA: Page<Task>
+SPA --> ANN: Список задач
+
+== Отправка аннотации ==
+ANN -> SPA: Выбор метки "cat"
+SPA -> API: POST /annotations\n{task_id, label: "cat"}
+API -> JWT: decode_token(token)
+JWT --> API: valid
+API -> DB: SELECT task WHERE id=task_id\n(проверка status=ACTIVE)
+DB --> API: Task
+API -> DB: INSERT annotation\n(task_id, annotator_id, label)
+DB --> API: Annotation
+API -> DB: SELECT COUNT(annotations)\nWHERE task_id=?
+DB --> API: count=3
+
+note over API: count >= annotations_required?
+API -> DB: UPDATE task SET status=COMPLETED
+DB --> API: OK
+
+API --> SPA: Annotation (201 Created)
+SPA --> ANN: "Аннотация отправлена!"
+
+== Верификация (Менеджер) ==
+actor Менеджер as MGR
+MGR -> SPA: Открыть аннотации задачи
+SPA -> API: GET /annotations/task/{id}\n[Authorization: Bearer <mgr_token>]
+API -> JWT: decode_token(mgr_token)
+JWT --> API: {role: "manager"}
+API -> DB: SELECT annotations WHERE task_id=?
+DB --> API: [Annotation, ...]
+API --> SPA: [Annotation, ...]
+
+MGR -> SPA: Нажать "Верифицировать"
+SPA -> API: PUT /annotations/{id}/verify\n{status: "verified"}
+API -> JWT: check role in (manager, admin)
+JWT --> API: OK
+API -> DB: UPDATE annotation\nSET status=VERIFIED, verified_by=mgr_id
+DB --> API: OK
+API --> SPA: Annotation (verified)
+SPA --> MGR: Статус обновлён ✓
+
+@enduml
