@@ -8,19 +8,19 @@ RUN npm install
 
 COPY . .
 
-# VITE_API_URL передаётся как build arg (Railway → Variables)
+# VITE_API_URL прокидывается через build arg из Railway Variables
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
 RUN npm run build
 
 
-# ─── Stage 2: Serve with nginx ────────────────────────────────────────────────
+# ─── Stage 2: Serve ───────────────────────────────────────────────────────────
 FROM nginx:1.25-alpine AS runtime
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# SPA: все маршруты → index.html
+# SPA: все маршруты → index.html, nginx слушает на 80
 RUN printf 'server {\n\
     listen 80;\n\
     root /usr/share/nginx/html;\n\
@@ -31,3 +31,5 @@ RUN printf 'server {\n\
 }\n' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
