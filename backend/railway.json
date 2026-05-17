@@ -5,8 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2",
-    "healthcheckPath": "/api/v1/auth/me",
+    "healthcheckPath": "/docs",
     "healthcheckTimeout": 60,
     "restartPolicyType": "ON_FAILURE"
   }
