@@ -7,6 +7,11 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+
+# VITE_API_URL передаётся как build arg (Railway → Variables)
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 RUN npm run build
 
 
@@ -15,13 +20,14 @@ FROM nginx:1.25-alpine AS runtime
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# nginx конфигурация для SPA (все маршруты → index.html)
-RUN echo 'server { \
-    listen 80; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { try_files $uri $uri/ /index.html; } \
-    location /api/ { proxy_pass http://backend:8000; } \
-}' > /etc/nginx/conf.d/default.conf
+# SPA: все маршруты → index.html
+RUN printf 'server {\n\
+    listen 80;\n\
+    root /usr/share/nginx/html;\n\
+    index index.html;\n\
+    location / {\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+}\n' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
