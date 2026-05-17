@@ -2,7 +2,10 @@
 Конфигурация приложения через переменные окружения.
 12-factor App: Factor III — Config stored in the environment.
 """
+import json
 from functools import lru_cache
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,8 +34,23 @@ class Settings(BaseSettings):
     # Redis (Factor IV)
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # CORS
+    # CORS — принимает строку, JSON-массив или запятую-разделённый список
     ALLOWED_ORIGINS: list[str] = ["http://localhost:5173"]
+
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, v: object) -> list[str]:
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return ["http://localhost:5173"]
+            if v.startswith("["):
+                return json.loads(v)
+            # запятая-разделённый список: https://a.com,https://b.com
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v  # type: ignore[return-value]
 
     # Pagination
     DEFAULT_PAGE_SIZE: int = 20
